@@ -3,10 +3,13 @@ package org.example;
 import org.eclipse.paho.client.mqttv3.*;
 
 import java.net.ConnectException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class FirstClient {
     private static boolean log = true;
+    private static boolean location = true;
     private static IMqttClient client;
 
     static {
@@ -17,17 +20,25 @@ public class FirstClient {
         }
     }
 
-    private static boolean location = true;
-    private static boolean urgent = true;
-
     public static void main(String[] args) {
         sendLocationInfo();
-        sendLog();
+
+
+        List<Thread> list = new ArrayList<>();
+
+        for (int i = 0; i < 1000; i++) {
+            list.add(sendLog());
+            list.add(sendLocationInfo());
+        }
+
+        for(Thread thread : list) {
+            thread.start();
+        }
+
         consumeUrgentCommand();
 
     }
-
-    public static void sendLog() {
+    public static Thread sendLog() {
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -47,13 +58,11 @@ public class FirstClient {
                         System.out.println(e.getMessage());
                     }
                 }
-
             }
         });
-        thread.start();
+        return thread;
     }
-
-    private static void sendLocationInfo() {
+    private static Thread sendLocationInfo() {
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -75,9 +84,8 @@ public class FirstClient {
                 }
             }
         });
-        thread.start();
+        return thread;
     }
-
     private static void consumeUrgentCommand() {
         System.out.println("System is working.........");
         Thread thread = new Thread(new Runnable() {
@@ -87,7 +95,7 @@ public class FirstClient {
                     client.subscribe(String.format("command:  %s", StaticData.electronicCardUUID), ((topic, message) -> {
                         if (message.toString().equals("RUN")) {
                             System.out.println("--->>>>>>>>>>>>>>> ENGINE IS RUNNING");
-                            //System.exit(0);
+                            System.exit(0);
                         } else if (message.toString().equals("NOTHING")) {
                             System.out.println("--->>>>>>>>>>>>>>>> NOTHING");
                         }
@@ -100,7 +108,6 @@ public class FirstClient {
         thread.start();
 
     }
-
     private static IMqttClient mqttClient() throws MqttException {
         String publisherId = UUID.randomUUID().toString();
         MqttConnectOptions options;
